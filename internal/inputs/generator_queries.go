@@ -65,7 +65,7 @@ type QueryGeneratorConfig struct {
 
 	ClickhouseUseTags bool `mapstructure:"clickhouse-use-tags"`
 
-	MongoUseNaive bool `mapstructure:"mongo-use-native"`
+	MongoUseNaive bool `mapstructure:"mongo-use-naive"`
 }
 
 // Validate checks that the values of the QueryGeneratorConfig are reasonable.
