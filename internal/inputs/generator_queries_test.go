@@ -19,6 +19,7 @@ import (
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/clickhouse"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/influx"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/mongo"
+	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/mysql"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/siridb"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/timescaledb"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/uses/devops"
@@ -298,6 +299,13 @@ func TestGetUseCaseGenerator(t *testing.T) {
 	}
 	g.config.MongoUseNaive = true
 	checkType(FormatMongo, nmongo)
+
+	bm := mysql.BaseGenerator{}
+	mysql, err := bm.NewDevops(tsStart, tsEnd, scale)
+	if err != nil {
+		t.Fatalf("Error creating mysql query generator")
+	}
+	checkType(FormatMysql, mysql)
 
 	bcc := clickhouse.BaseGenerator{}
 	clickh, err := bcc.NewDevops(tsStart, tsEnd, scale)

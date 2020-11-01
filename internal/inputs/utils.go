@@ -14,6 +14,7 @@ const (
 	FormatClickhouse  = "clickhouse"
 	FormatInflux      = "influx"
 	FormatMongo       = "mongo"
+	FormatMysql       = "mysql"
 	FormatSiriDB      = "siridb"
 	FormatTimescaleDB = "timescaledb"
 	FormatAkumuli     = "akumuli"
@@ -33,6 +34,7 @@ var formats = []string{
 	FormatClickhouse,
 	FormatInflux,
 	FormatMongo,
+	FormatMysql,
 	FormatSiriDB,
 	FormatTimescaleDB,
 	FormatAkumuli,

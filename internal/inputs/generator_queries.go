@@ -17,6 +17,7 @@ import (
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/cratedb"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/influx"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/mongo"
+	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/mysql"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/siridb"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/timescaledb"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/databases/victoriametrics"
@@ -250,6 +251,11 @@ func (g *QueryGenerator) initFactories() error {
 
 	victoriametrics := &victoriametrics.BaseGenerator{}
 	if err := g.addFactory(FormatVictoriaMetrics, victoriametrics); err != nil {
+		return err
+	}
+
+	mysql := &mysql.BaseGenerator{}
+	if err := g.addFactory(FormatMysql, mysql); err != nil {
 		return err
 	}
 

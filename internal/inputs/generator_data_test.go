@@ -447,6 +447,7 @@ func TestGetSerializer(t *testing.T) {
 	checkType(FormatClickhouse, &serialize.TimescaleDBSerializer{})
 	checkType(FormatInflux, &serialize.InfluxSerializer{})
 	checkType(FormatMongo, &serialize.MongoSerializer{})
+	checkType(FormatMysql, &serialize.TimescaleDBSerializer{})
 	checkType(FormatSiriDB, &serialize.SiriDBSerializer{})
 	checkType(FormatClickhouse, &serialize.TimescaleDBSerializer{})
 	checkType(FormatCrateDB, &serialize.CrateDBSerializer{})
