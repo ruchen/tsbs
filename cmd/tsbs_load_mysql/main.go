@@ -36,9 +36,10 @@ var (
 	numberPartitions int
 	chunkTime        time.Duration
 
-	timeIndex          bool
-	timePartitionIndex bool
-	partitionIndex     bool
+	timeTagsIndex      bool
+	tagsTimeIndex      bool
+	timeTagsIndexPK    bool
+	tagsTimeIndexPK    bool
 	fieldIndex         string
 	fieldIndexCount    int
 
@@ -81,9 +82,12 @@ func init() {
 	pflag.Int("partitions", 1, "Number of partitions")
 	pflag.Duration("chunk-time", 12*time.Hour, "Duration that each chunk should represent, e.g., 12h")
 
-	pflag.Bool("time-index", true, "Whether to build an index on the time dimension")
-	pflag.Bool("time-partition-index", false, "Whether to build an index on the time dimension, compounded with partition")
-	pflag.Bool("partition-index", true, "Whether to build an index on the partition key")
+	pflag.Bool("time-tags-index", true, "Whether to build an index on (time,tags)")
+	pflag.Bool("tags-time-index", true, "Whether to build an index on (tags,time)")
+
+	pflag.Bool("time-tags-index-pk", true, "Whether (time,tags) index is the PK")
+	pflag.Bool("tags-time-index-pk", false, "Whether (tags,time) index is the PK")
+
 	pflag.String("field-index", valueTimeIdx, "index types for tags (comma delimited)")
 	pflag.Int("field-index-count", 0, "Number of indexed fields (-1 for all)")
 
@@ -116,9 +120,21 @@ func init() {
 	numberPartitions = viper.GetInt("partitions")
 	chunkTime = viper.GetDuration("chunk-time")
 
-	timeIndex = viper.GetBool("time-index")
-	timePartitionIndex = viper.GetBool("time-partition-index")
-	partitionIndex = viper.GetBool("partition-index")
+	timeTagsIndex = viper.GetBool("time-tags-index")
+	tagsTimeIndex = viper.GetBool("tags-time-index")
+	timeTagsIndexPK = viper.GetBool("time-tags-index-pk")
+	tagsTimeIndexPK = viper.GetBool("tags-time-index-pk")
+
+	if timeTagsIndexPK && !timeTagsIndex {
+		panic("time-tags-index must be true if time-tags-index-pk is true")
+	}
+	if tagsTimeIndexPK && !tagsTimeIndex {
+		panic("tags-time-index must be true if tags-time-index-pk is true")
+	}
+	if timeTagsIndexPK && tagsTimeIndexPK {
+		panic("At most one of time-tags-index-pk and tags-time-index-pk can be True")
+	}
+
 	fieldIndex = viper.GetString("field-index")
 	fieldIndexCount = viper.GetInt("field-index-count")
 
@@ -196,6 +212,6 @@ func getConnectString(withDB bool) string {
 		}
 	}
 
-	fmt.Printf("getConnectString: %v\n", cs)
+	// fmt.Printf("getConnectString: %v\n", cs)
 	return cs
 }

@@ -202,7 +202,6 @@ func (p *processor) lookupPreparedStatement(table string, cols []string, dataRow
 	if pstmt, ok = p.csi.pcache[key]; !ok {
 		pstmt = makeInsert(table, cols, dataRowsLen)
 		p.csi.pcache[key] = pstmt
-		fmt.Printf("lookup pstmt added %v\n", key)
 	}
 	p.csi.pcacheMux.Unlock()
 	return pstmt
