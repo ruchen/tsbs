@@ -67,6 +67,8 @@ type QueryGeneratorConfig struct {
 	ClickhouseUseTags bool `mapstructure:"clickhouse-use-tags"`
 
 	MongoUseNaive bool `mapstructure:"mongo-use-naive"`
+
+	MysqlUseTags bool `mapstructure:"mysql-use-tags"`
 }
 
 // Validate checks that the values of the QueryGeneratorConfig are reasonable.
@@ -99,6 +101,7 @@ func (c *QueryGeneratorConfig) AddToFlagSet(fs *pflag.FlagSet) {
 	fs.Bool("timescale-use-json", false, "TimescaleDB only: Use separate JSON tags table when querying")
 	fs.Bool("timescale-use-tags", true, "TimescaleDB only: Use separate tags table when querying")
 	fs.Bool("timescale-use-time-bucket", true, "TimescaleDB only: Use time bucket. Set to false to test on native PostgreSQL")
+	fs.Bool("mysql-use-tags", true, "MySQL only: Use separate tags table when querying")
 }
 
 // QueryGenerator is a type of Generator for creating queries to test against a
@@ -254,7 +257,9 @@ func (g *QueryGenerator) initFactories() error {
 		return err
 	}
 
-	mysql := &mysql.BaseGenerator{}
+	mysql := &mysql.BaseGenerator{
+		UseTags: g.config.MysqlUseTags,
+	}
 	if err := g.addFactory(FormatMysql, mysql); err != nil {
 		return err
 	}
