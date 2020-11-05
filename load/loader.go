@@ -155,7 +155,8 @@ func (l *BenchmarkRunner) RunBenchmark(b Benchmark, workQueues uint) {
 
 	// Start scan process - actual data read process
 	start := time.Now()
-	l.scan(b, channels)
+	stop_chan := make(chan int)
+	l.scan(b, channels, stop_chan)
 
 	// After scan process completed (no more data to come) - begin shutdown process
 
@@ -167,6 +168,9 @@ func (l *BenchmarkRunner) RunBenchmark(b Benchmark, workQueues uint) {
 	// Wait for all workers to finish
 	wg.Wait()
 	end := time.Now()
+
+	// Signal reporter to stop
+	stop_chan <- 0
 
 	l.summary(end.Sub(start))
 }
@@ -264,11 +268,11 @@ func (l *BenchmarkRunner) createChannels(workQueues uint) []*duplexChannel {
 
 // scan launches any needed reporting mechanism and proceeds to scan input data
 // to distribute to workers
-func (l *BenchmarkRunner) scan(b Benchmark, channels []*duplexChannel) uint64 {
+func (l *BenchmarkRunner) scan(b Benchmark, channels []*duplexChannel, stop_chan <-chan int) uint64 {
 	// Start background reporting process
 	// TODO why it is here? May be it could be moved one level up?
 	if l.ReportingPeriod.Nanoseconds() > 0 {
-		go l.report(l.ReportingPeriod)
+		go l.report(l.ReportingPeriod, stop_chan)
 	}
 
 	// Scan incoming data
@@ -320,31 +324,39 @@ func (l *BenchmarkRunner) summary(took time.Duration) {
 }
 
 // report handles periodic reporting of loading stats
-func (l *BenchmarkRunner) report(period time.Duration) {
+func (l *BenchmarkRunner) report(period time.Duration, stop_chan <-chan int) {
 	start := time.Now()
 	prevTime := start
 	prevColCount := uint64(0)
 	prevRowCount := uint64(0)
 
 	printFn("time,per. metric/s,metric total,overall metric/s,per. row/s,row total,overall row/s\n")
-	for now := range time.NewTicker(period).C {
-		cCount := atomic.LoadUint64(&l.metricCnt)
-		rCount := atomic.LoadUint64(&l.rowCnt)
+	ticker := time.NewTicker(period)
+	for {
+		select {
+			case now := <-ticker.C:
+				cCount := atomic.LoadUint64(&l.metricCnt)
+				rCount := atomic.LoadUint64(&l.rowCnt)
 
-		sinceStart := now.Sub(start)
-		took := now.Sub(prevTime)
-		colrate := float64(cCount-prevColCount) / float64(took.Seconds())
-		overallColRate := float64(cCount) / float64(sinceStart.Seconds())
-		if rCount > 0 {
-			rowrate := float64(rCount-prevRowCount) / float64(took.Seconds())
-			overallRowRate := float64(rCount) / float64(sinceStart.Seconds())
-			printFn("%d,%0.2f,%E,%0.2f,%0.2f,%E,%0.2f\n", now.Unix(), colrate, float64(cCount), overallColRate, rowrate, float64(rCount), overallRowRate)
-		} else {
-			printFn("%d,%0.2f,%E,%0.2f,-,-,-\n", now.Unix(), colrate, float64(cCount), overallColRate)
+				sinceStart := now.Sub(start)
+				took := now.Sub(prevTime)
+				colrate := float64(cCount-prevColCount) / float64(took.Seconds())
+				overallColRate := float64(cCount) / float64(sinceStart.Seconds())
+				if rCount > 0 {
+					rowrate := float64(rCount-prevRowCount) / float64(took.Seconds())
+					overallRowRate := float64(rCount) / float64(sinceStart.Seconds())
+					printFn("%d,%0.2f,%E,%0.2f,%0.2f,%E,%0.2f\n", now.Unix(), colrate, float64(cCount), overallColRate, rowrate, float64(rCount), overallRowRate)
+				} else {
+					printFn("%d,%0.2f,%E,%0.2f,-,-,-\n", now.Unix(), colrate, float64(cCount), overallColRate)
+				}
+
+				prevColCount = cCount
+				prevRowCount = rCount
+				prevTime = now
+
+			case <-stop_chan:
+				ticker.Stop()
+				return
 		}
-
-		prevColCount = cCount
-		prevRowCount = rCount
-		prevTime = now
 	}
 }
