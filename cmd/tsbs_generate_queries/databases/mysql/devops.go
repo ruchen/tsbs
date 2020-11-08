@@ -36,7 +36,7 @@ func (d *Devops) getHostWhereWithHostnames(hostnames []string) string {
 		for _, s := range hostnames {
 			hostnameClauses = append(hostnameClauses, fmt.Sprintf("'%s'", s))
 		}
-		return fmt.Sprintf("tags_id IN (SELECT id FROM tags WHERE hostname IN (%s))", strings.Join(hostnameClauses, ","))
+		return fmt.Sprintf("hostname IN (%s)", strings.Join(hostnameClauses, ","))
 	} else {
 		for _, s := range hostnames {
 			hostnameClauses = append(hostnameClauses, fmt.Sprintf("hostname = '%s'", s))
@@ -124,7 +124,7 @@ func (d *Devops) GroupByOrderByLimit(qi query.Query) {
 // SELECT AVG(metric1), ..., AVG(metricN)
 // FROM cpu
 // WHERE time >= '$HOUR_START' AND time < '$HOUR_END'
-// GROUP BY hour, hostname ORDER BY hour
+// GROUP BY hour, hostname ORDER BY hour, hostname
 func (d *Devops) GroupByTimeAndPrimaryTag(qi query.Query, numMetrics int) {
 	metrics, err := devops.GetCPUMetricsSlice(numMetrics)
 	panicIfErr(err)
@@ -137,51 +137,15 @@ func (d *Devops) GroupByTimeAndPrimaryTag(qi query.Query, numMetrics int) {
 		selectClauses[i] = fmt.Sprintf("avg(%s) as %s", m, meanClauses[i])
 	}
 
-	hostnameField := "hostname"
-	joinStr := ""
-	fromStr := "cpu"
-	if d.UseTags {
-		hostnameField = "tags.hostname"
-		joinStr = "cpu.tags_id = tags.id AND"
-		fromStr = "cpu, tags"
-	}
-
-	sql := fmt.Sprintf(`SELECT DATE_FORMAT(time, '%s') as hour, %s, %s
-	FROM %s
-	WHERE %s time >= '%s' AND time < '%s'
-	GROUP BY hour, tags_id
-        ORDER BY hour, tags_id`,
-		roundToHour, hostnameField, strings.Join(selectClauses, ", "),
-		fromStr, joinStr,
+	sql := fmt.Sprintf(`SELECT DATE_FORMAT(time, '%s') as hour, hostname, %s
+	FROM cpu
+	WHERE time >= '%s' AND time < '%s'
+	GROUP BY hour, hostname
+        ORDER BY hour, hostname`,
+		roundToHour, strings.Join(selectClauses, ", "),
 		interval.Start().Format(goTimeFmt),
 		interval.End().Format(goTimeFmt))
 
-/*
-explain
-SELECT DATE_FORMAT(time, '%Y-%m-%d %H:00:00') as hour, tags.hostname, avg(usage_user)
-FROM cpu, tags
-WHERE cpu.tags_id = tags.id AND time >= '2016-01-01 04:33:11.947779+00:00' AND time < '2016-01-01 16:33:11.947779+00:00'
-GROUP BY hour, tags.id ORDER BY hour, tags.id;
-
-	sql := fmt.Sprintf(`
-        WITH cpu_avg AS (
-          SELECT DATE_FORMAT(time, '%s') as hour, tags_id,
-          %s
-          FROM cpu
-          WHERE time >= '%s' AND time < '%s'
-          GROUP BY hour, tags_id
-        )
-        SELECT hour, %s, %s
-        FROM cpu_avg
-        %s
-        ORDER BY hour, %s`,
-		roundToHour,
-		strings.Join(selectClauses, ", "),
-		interval.Start().Format(goTimeFmt),
-		interval.End().Format(goTimeFmt),
-		hostnameField, strings.Join(meanClauses, ", "),
-		joinStr, hostnameField)
-*/
 	humanLabel := devops.GetDoubleGroupByLabel("MySQL", numMetrics)
 	humanDesc := fmt.Sprintf("%s: %s", humanLabel, interval.StartString())
 	d.fillInQuery(qi, humanLabel, humanDesc, devops.TableName, sql)
@@ -220,7 +184,8 @@ func (d *Devops) MaxAllCPU(qi query.Query, nHosts int) {
 func (d *Devops) LastPointPerHost(qi query.Query) {
 	var sql string
 	if d.UseTags {
-	        sql = "SELECT * FROM tags, LATERAL (SELECT * FROM cpu WHERE cpu.tags_id = tags.id ORDER BY time DESC LIMIT 1) as lp ORDER by tags.hostname, lp.time DESC"
+		// The subquery should do a loose index scan. The result from that with "scale" rows should do point lookups on the cpu table.
+                sql = "SELECT cpu.* FROM (select max(time) as maxtime, hostname FROM cpu GROUP BY hostname) sq, cpu WHERE sq.hostname = cpu.hostname AND sq.maxtime = cpu.time ORDER BY cpu.hostname"
 	} else {
 		// sql = fmt.Sprintf(`SELECT DISTINCT ON (hostname) * FROM cpu ORDER BY hostname, time DESC`)
 		panic("Not supported yet")

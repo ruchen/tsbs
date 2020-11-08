@@ -30,16 +30,15 @@ var (
 	port            string
 
 	logBatches    bool
-	inTableTag    bool
 	hashWorkers   bool
 
 	numberPartitions int
 	chunkTime        time.Duration
 
-	timeTagsIndex      bool
-	tagsTimeIndex      bool
-	timeTagsIndexPK    bool
-	tagsTimeIndexPK    bool
+	timeHostIndex      bool
+	hostTimeIndex      bool
+	timeHostIndexPK    bool
+	hostTimeIndexPK    bool
 	fieldIndex         string
 	fieldIndexCount    int
 
@@ -47,6 +46,7 @@ var (
 	replicationStatsFile string
 
 	createMetricsTable bool
+	analyze            bool
 	tagColumnTypes     []string
 	tagColumnTypesID   []string
 )
@@ -75,18 +75,17 @@ func init() {
 
 	pflag.Bool("log-batches", false, "Whether to time individual batches.")
 
-	pflag.Bool("in-table-partition-tag", false, "Whether the partition key (e.g. hostname) should also be in the metrics table")
 	// TODO - This flag could potentially be done as a string/enum with other options besides no-hash, round-robin, etc
 	pflag.Bool("hash-workers", false, "Whether to consistently hash insert data to the same workers (i.e., the data for a particular host always goes to the same worker)")
 
 	pflag.Int("partitions", 1, "Number of partitions")
 	pflag.Duration("chunk-time", 12*time.Hour, "Duration that each chunk should represent, e.g., 12h")
 
-	pflag.Bool("time-tags-index", true, "Whether to build an index on (time,tags)")
-	pflag.Bool("tags-time-index", true, "Whether to build an index on (tags,time)")
+	pflag.Bool("time-host-index", true, "Whether to build an index on (time,host)")
+	pflag.Bool("host-time-index", true, "Whether to build an index on (host,time)")
 
-	pflag.Bool("time-tags-index-pk", true, "Whether (time,tags) index is the PK")
-	pflag.Bool("tags-time-index-pk", false, "Whether (tags,time) index is the PK")
+	pflag.Bool("time-host-index-pk", true, "Whether (time,host) index is the PK")
+	pflag.Bool("host-time-index-pk", false, "Whether (host,time) index is the PK")
 
 	pflag.String("field-index", valueTimeIdx, "index types for tags (comma delimited)")
 	pflag.Int("field-index-count", 0, "Number of indexed fields (-1 for all)")
@@ -94,6 +93,7 @@ func init() {
 	pflag.String("write-profile", "", "File to output CPU/memory profile to")
 	pflag.String("write-replication-stats", "", "File to output replication stats to")
 	pflag.Bool("create-metrics-table", true, "Drops existing and creates new metrics table")
+	pflag.Bool("analyze", true, "Analyze each table after the load")
 
 	pflag.Parse()
 
@@ -114,25 +114,24 @@ func init() {
 	pass = viper.GetString("pass")
 	logBatches = viper.GetBool("log-batches")
 
-	inTableTag = viper.GetBool("in-table-partition-tag")
 	hashWorkers = viper.GetBool("hash-workers")
 
 	numberPartitions = viper.GetInt("partitions")
 	chunkTime = viper.GetDuration("chunk-time")
 
-	timeTagsIndex = viper.GetBool("time-tags-index")
-	tagsTimeIndex = viper.GetBool("tags-time-index")
-	timeTagsIndexPK = viper.GetBool("time-tags-index-pk")
-	tagsTimeIndexPK = viper.GetBool("tags-time-index-pk")
+	timeHostIndex = viper.GetBool("time-host-index")
+	hostTimeIndex = viper.GetBool("host-time-index")
+	timeHostIndexPK = viper.GetBool("time-host-index-pk")
+	hostTimeIndexPK = viper.GetBool("host-time-index-pk")
 
-	if timeTagsIndexPK && !timeTagsIndex {
-		panic("time-tags-index must be true if time-tags-index-pk is true")
+	if timeHostIndexPK && !timeHostIndex {
+		panic("time-host-index must be true if time-host-index-pk is true")
 	}
-	if tagsTimeIndexPK && !tagsTimeIndex {
-		panic("tags-time-index must be true if tags-time-index-pk is true")
+	if hostTimeIndexPK && !hostTimeIndex {
+		panic("host-time-index must be true if host-time-index-pk is true")
 	}
-	if timeTagsIndexPK && tagsTimeIndexPK {
-		panic("At most one of time-tags-index-pk and tags-time-index-pk can be True")
+	if timeHostIndexPK && hostTimeIndexPK {
+		panic("At most one of time-host-index-pk and host-time-index-pk can be True")
 	}
 
 	fieldIndex = viper.GetString("field-index")
@@ -141,6 +140,7 @@ func init() {
 	profileFile = viper.GetString("write-profile")
 	replicationStatsFile = viper.GetString("write-replication-stats")
 	createMetricsTable = viper.GetBool("create-metrics-table")
+	analyze = viper.GetBool("analyze")
 
 	loader = load.GetBenchmarkRunner(config)
 }
@@ -170,6 +170,7 @@ func (b *benchmark) GetDBCreator() load.DBCreator {
 	return &dbCreator{
 		br:      loader.GetBufferedReader(),
 		// connStr: getConnectString(),
+		tables:  make([]string, 0, 10),
 	}
 }
 

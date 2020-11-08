@@ -19,6 +19,7 @@ type dbCreator struct {
 	br      *bufio.Reader
 	tags    string
 	cols    []string
+	tables	[]string
 	// connStr string
 }
 
@@ -114,6 +115,19 @@ func (d *dbCreator) CreateDB(dbName string) error {
 	return nil
 }
 
+func (d *dbCreator) Close() {
+	if !analyze {
+		return
+	}
+
+	db := MustConnect(getConnectString(true))
+	for _, tname := range d.tables {
+		fmt.Printf("Close: analyze %s\n", tname)
+		MustExec(db, "ANALYZE TABLE "+tname)
+	}
+	db.Close()
+}
+
 func (d *dbCreator) PostCreateDB(dbName string) error {
 	dbBench := MustConnect(getConnectString(true))
 	defer dbBench.Close()
@@ -125,6 +139,7 @@ func (d *dbCreator) PostCreateDB(dbName string) error {
 	tagNames, tagTypes := extractTagNamesAndTypes(tags[1:])
 	if createMetricsTable {
 		createTagsTable(dbBench, tagNames, tagTypes)
+		d.tables = append(d.tables, "tags")
 	}
 	// tableCols is a global map. Globally cache the available tags
 	tableCols[tagsKey] = tagNames
@@ -163,13 +178,7 @@ func (d *dbCreator) getFieldAndIndexDefinitions(columns []string) ([]string, []s
 	var indexDefs []string
 	var allCols []string
 
-	partitioningField := tableCols[tagsKey][0]
 	tableName := columns[0]
-	// If the user has specified that we should partition on the primary tags key, we
-	// add that to the list of columns to create
-	if inTableTag {
-		allCols = append(allCols, partitioningField)
-	}
 
 	allCols = append(allCols, columns[1:]...)
 	extraCols := 0 // set to 1 when hostname is kept in-table
@@ -179,14 +188,6 @@ func (d *dbCreator) getFieldAndIndexDefinitions(columns []string) ([]string, []s
 		}
 		fieldType := "DOUBLE"
 		idxType := fieldIndex
-		// This condition handles the case where we keep the primary tag key in the table
-		// and partition on it. Since under the current implementation this tag is always
-		// hostname, we set it to a TEXT field instead of DOUBLE PRECISION
-		if inTableTag && idx == 0 {
-			fieldType = "VARCHAR(256)"
-			idxType = ""
-			extraCols = 1
-		}
 
 		fieldDefs = append(fieldDefs, fmt.Sprintf("%s %s", field, fieldType))
 		// If the user specifies indexes on additional fields, add them to
@@ -202,22 +203,23 @@ func (d *dbCreator) getFieldAndIndexDefinitions(columns []string) ([]string, []s
 // the necessary table and index based on the user's settings
 func (d *dbCreator) createTableAndIndexes(dbBench *sql.DB, tableName string, fieldDefs []string, indexDefs []string) {
 	MustExec(dbBench, fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName))
-	MustExec(dbBench, fmt.Sprintf("CREATE TABLE %s (`time` timestamp NOT NULL, tags_id bigint NOT NULL, additional_tags text default null, %s)",
+	MustExec(dbBench, fmt.Sprintf("CREATE TABLE %s (`time` TIMESTAMP NOT NULL, tags_id BIGINT NOT NULL, hostname VARCHAR(256), additional_tags VARCHAR(256) DEFAULT NULL, %s)",
 		tableName, strings.Join(fieldDefs, " NOT NULL,")))
+	d.tables = append(d.tables, tableName)
 
-	if tagsTimeIndex {
-		if tagsTimeIndexPK {
-			MustExec(dbBench, fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY(tags_id, `time` DESC)", tableName))
+	if hostTimeIndex {
+		if hostTimeIndexPK {
+			MustExec(dbBench, fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY(hostname, `time` DESC)", tableName))
 		} else {
-			MustExec(dbBench, fmt.Sprintf("CREATE INDEX six ON %s(tags_id, `time` DESC)", tableName))
+			MustExec(dbBench, fmt.Sprintf("CREATE INDEX six ON %s(hostname, `time` DESC)", tableName))
 		}
 	}
 
-	if timeTagsIndex {
-		if timeTagsIndexPK {
-			MustExec(dbBench, fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY(`time` DESC, tags_id)", tableName))
+	if timeHostIndex {
+		if timeHostIndexPK {
+			MustExec(dbBench, fmt.Sprintf("ALTER TABLE %s ADD PRIMARY KEY(`time` DESC, hostname)", tableName))
 		} else {
-			MustExec(dbBench, fmt.Sprintf("CREATE INDEX six ON %s(`time` DESC, tags_id)", tableName))
+			MustExec(dbBench, fmt.Sprintf("CREATE INDEX six ON %s(`time` DESC, hostname)", tableName))
 		}
 	}
 

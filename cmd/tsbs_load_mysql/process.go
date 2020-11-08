@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	numExtraCols = 2 // one for tags_id, one for additional_tags
+	numExtraCols = 3 // tags_id, hostname, additional_tags
 )
 
 type syncCSI struct {
@@ -106,11 +106,10 @@ func splitTagsAndMetrics(rows []*insertData, dataCols int) ([][]string, [][]inte
 		ts := time.Unix(0, timeInt)
 
 		// use nil at 2nd position as placeholder for tagKey
-		r := make([]interface{}, 3, dataCols)
-		r[0], r[1], r[2] = ts, nil, json
-		if inTableTag {
-			r = append(r, tags[0])
-		}
+		// First 4 array entries are: "time", "tags_id", "hostname", "additional_tags"
+		r := make([]interface{}, 4, dataCols)
+		r[0], r[1], r[2], r[3] = ts, nil, tags[0], json
+
 		for _, v := range metrics[1:] {
 			if v == "" {
 				r = append(r, nil)
@@ -209,9 +208,6 @@ func (p *processor) lookupPreparedStatement(table string, cols []string, dataRow
 
 func (p *processor) processCSI(table string, rows []*insertData) uint64 {
 	colLen := len(tableCols[table]) + numExtraCols
-	if inTableTag {
-		colLen++
-	}
 	tagRows, dataRows, numMetrics := splitTagsAndMetrics(rows, colLen)
 
 	newTags := p.lookupTags(tagRows)
@@ -227,10 +223,7 @@ func (p *processor) processCSI(table string, rows []*insertData) uint64 {
 	p.csi.mutex.RUnlock()
 
 	cols := make([]string, 0, colLen)
-	cols = append(cols, "time", "tags_id", "additional_tags")
-	if inTableTag {
-		cols = append(cols, tableCols[tagsKey][0])
-	}
+	cols = append(cols, "time", "tags_id", "hostname", "additional_tags")
 	cols = append(cols, tableCols[table]...)
 
 	pstmt := p.lookupPreparedStatement(table, cols, len(dataRows))

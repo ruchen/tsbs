@@ -159,39 +159,20 @@ func TestDBCreatorGetFieldAndIndexDefinitions(t *testing.T) {
 		desc            string
 		columns         []string
 		fieldIndexCount int
-		inTableTag      bool
 		wantFieldDefs   []string
 		wantIndexDefs   []string
 	}{
 		{
-			desc:            "all field indexes",
-			columns:         []string{"cpu", "usage_user", "usage_system", "usage_idle", "usage_nice"},
-			fieldIndexCount: -1,
-			inTableTag:      false,
-			wantFieldDefs:   []string{"usage_user DOUBLE", "usage_system DOUBLE", "usage_idle DOUBLE", "usage_nice DOUBLE"},
-			wantIndexDefs:   []string{"CREATE INDEX x_usage_user_time ON cpu (usage_user, `time` DESC)", "CREATE INDEX x_usage_system_time ON cpu (usage_system, `time` DESC)", "CREATE INDEX x_usage_idle_time ON cpu (usage_idle, `time` DESC)", "CREATE INDEX x_usage_nice_time ON cpu (usage_nice, `time` DESC)"},
-		},
-		{
-			desc:            "no field indexes",
-			columns:         []string{"cpu", "usage_user", "usage_system", "usage_idle", "usage_nice"},
-			fieldIndexCount: 0,
-			inTableTag:      false,
-			wantFieldDefs:   []string{"usage_user DOUBLE", "usage_system DOUBLE", "usage_idle DOUBLE", "usage_nice DOUBLE"},
-			wantIndexDefs:   []string{},
-		},
-		{
 			desc:            "no field indexes, in table tag",
 			columns:         []string{"cpu", "usage_user", "usage_system", "usage_idle", "usage_nice"},
 			fieldIndexCount: 0,
-			inTableTag:      true,
-			wantFieldDefs:   []string{"hostname VARCHAR(256)", "usage_user DOUBLE", "usage_system DOUBLE", "usage_idle DOUBLE", "usage_nice DOUBLE"},
+			wantFieldDefs:   []string{"usage_user DOUBLE", "usage_system DOUBLE", "usage_idle DOUBLE", "usage_nice DOUBLE"},
 			wantIndexDefs:   []string{},
 		},
 		{
 			desc:            "one field index",
 			columns:         []string{"cpu", "usage_user", "usage_system", "usage_idle", "usage_nice"},
 			fieldIndexCount: 1,
-			inTableTag:      false,
 			wantFieldDefs:   []string{"usage_user DOUBLE", "usage_system DOUBLE", "usage_idle DOUBLE", "usage_nice DOUBLE"},
 			wantIndexDefs:   []string{"CREATE INDEX x_usage_user_time ON cpu (usage_user, `time` DESC)"},
 		},
@@ -199,15 +180,12 @@ func TestDBCreatorGetFieldAndIndexDefinitions(t *testing.T) {
 			desc:            "two field indexes",
 			columns:         []string{"cpu", "usage_user", "usage_system", "usage_idle", "usage_nice"},
 			fieldIndexCount: 2,
-			inTableTag:      false,
 			wantFieldDefs:   []string{"usage_user DOUBLE", "usage_system DOUBLE", "usage_idle DOUBLE", "usage_nice DOUBLE"},
 			wantIndexDefs:   []string{"CREATE INDEX x_usage_user_time ON cpu (usage_user, `time` DESC)", "CREATE INDEX x_usage_system_time ON cpu (usage_system, `time` DESC)"},
 		},
 	}
 
 	for _, c := range cases {
-		// Set the global in-table-tag flag based on the test case
-		inTableTag = c.inTableTag
 		// Initialize global cache
 		tableCols[tagsKey] = []string{}
 		tableCols[tagsKey] = append(tableCols[tagsKey], "hostname")
