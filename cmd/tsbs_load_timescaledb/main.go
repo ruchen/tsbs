@@ -54,6 +54,7 @@ var (
 	replicationStatsFile string
 
 	createMetricsTable bool
+	analyze            bool
 	forceTextFormat    bool
 	tagColumnTypes     []string
 )
@@ -103,6 +104,7 @@ func init() {
 	pflag.String("write-profile", "", "File to output CPU/memory profile to")
 	pflag.String("write-replication-stats", "", "File to output replication stats to")
 	pflag.Bool("create-metrics-table", true, "Drops existing and creates new metrics table. Can be used for both regular and hypertable")
+	pflag.Bool("analyze", true, "Run 'vacuum analyze' for each table after the load")
 
 	pflag.Bool("force-text-format", false, "Send/receive data in text format")
 
@@ -143,6 +145,7 @@ func init() {
 	profileFile = viper.GetString("write-profile")
 	replicationStatsFile = viper.GetString("write-replication-stats")
 	createMetricsTable = viper.GetBool("create-metrics-table")
+	analyze = viper.GetBool("analyze")
 
 	forceTextFormat = viper.GetBool("force-text-format")
 
@@ -175,6 +178,7 @@ func (b *benchmark) GetDBCreator() load.DBCreator {
 		br:      loader.GetBufferedReader(),
 		connStr: getConnectString(),
 		connDB:  connDB,
+		tables:  make([]string, 0, 10),
 	}
 }
 

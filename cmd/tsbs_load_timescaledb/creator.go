@@ -18,6 +18,7 @@ type dbCreator struct {
 	br      *bufio.Reader
 	tags    string
 	cols    []string
+	tables  []string
 	connStr string
 	connDB  string
 }
@@ -123,6 +124,19 @@ func (d *dbCreator) CreateDB(dbName string) error {
 	return nil
 }
 
+func (d *dbCreator) Close() {
+	if !analyze {
+		return
+	}
+
+        db := MustConnect(driver, getConnectString())
+        for _, tname := range d.tables {
+                fmt.Printf("Close: vacuum analyze %s\n", tname)
+                MustExec(db, "VACUUM ANALYZE "+tname)
+        }
+	db.Close()
+}
+
 func (d *dbCreator) PostCreateDB(dbName string) error {
 	dbBench := MustConnect(driver, getConnectString())
 	defer dbBench.Close()
@@ -134,6 +148,7 @@ func (d *dbCreator) PostCreateDB(dbName string) error {
 	tagNames, tagTypes := extractTagNamesAndTypes(tags[1:])
 	if createMetricsTable {
 		createTagsTable(dbBench, tagNames, tagTypes)
+		d.tables = append(d.tables, "tags")
 	}
 	// tableCols is a global map. Globally cache the available tags
 	tableCols[tagsKey] = tagNames
@@ -204,6 +219,7 @@ func (d *dbCreator) getFieldAndIndexDefinitions(columns []string) ([]string, []s
 func (d *dbCreator) createTableAndIndexes(dbBench *sql.DB, tableName string, fieldDefs []string, indexDefs []string) {
 	MustExec(dbBench, fmt.Sprintf("DROP TABLE IF EXISTS %s", tableName))
 	MustExec(dbBench, fmt.Sprintf("CREATE TABLE %s (time timestamptz, tags_id integer, %s, additional_tags JSONB DEFAULT NULL)", tableName, strings.Join(fieldDefs, ",")))
+	d.tables = append(d.tables, tableName)
 	if partitionIndex {
 		MustExec(dbBench, fmt.Sprintf("CREATE INDEX ON %s(tags_id, \"time\" DESC)", tableName))
 	}
