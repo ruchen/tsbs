@@ -23,7 +23,6 @@ const (
 
 // Program option vars:
 var (
-	mysqlConnect    string
 	host            string
 	user            string
 	pass            string
@@ -67,7 +66,6 @@ func init() {
 	var config load.BenchmarkRunnerConfig
 	config.AddToFlagSet(pflag.CommandLine)
 
-	pflag.String("mysql", "", "MySQL connection string")
 	pflag.String("host", "localhost", "Hostname of MySQL instance")
 	pflag.String("port", "3306", "Which port to connect to on the database host")
 	pflag.String("user", "root", "User to connect to MySQL as")
@@ -107,7 +105,6 @@ func init() {
 		panic(fmt.Errorf("unable to decode config: %s", err))
 	}
 
-	mysqlConnect = viper.GetString("mysql")
 	host = viper.GetString("host")
 	port = viper.GetString("port")
 	user = viper.GetString("user")
