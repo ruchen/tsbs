@@ -60,45 +60,19 @@ func (d *dbCreator) CreateDB(dbName string) error {
 		},
 	})
 
+	if timeseriesCollection {
+		cmd = append(cmd, bson.DocElem{"timeseries", map[string]interface{}{
+			"timeField": timestampField,
+			"metaField": "tags",
+		}})
+	}
+
 	err := d.session.DB(dbName).Run(cmd, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
 			return nil
 		}
 		return fmt.Errorf("create collection err: %v", err)
-	}
-
-	collection := d.session.DB(dbName).C(collectionName)
-	var key []string
-	if documentPer {
-		key = []string{"measurement", "tags.hostname", timestampField}
-	} else {
-		key = []string{aggKeyID, "measurement", "tags.hostname"}
-	}
-
-	index := mgo.Index{
-		Key:        key,
-		Unique:     false, // Unique does not work on the entire array of tags!
-		Background: false,
-		Sparse:     false,
-	}
-	err = collection.EnsureIndex(index)
-	if err != nil {
-		return fmt.Errorf("create basic index err: %v", err)
-	}
-
-	// To make updates for new records more efficient, we need a efficient doc
-	// lookup index
-	if !documentPer {
-		err = collection.EnsureIndex(mgo.Index{
-			Key:        []string{aggDocID},
-			Unique:     false,
-			Background: false,
-			Sparse:     false,
-		})
-		if err != nil {
-			return fmt.Errorf("create agg doc index err: %v", err)
-		}
 	}
 
 	return nil

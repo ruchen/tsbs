@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"sync"
+	"time"
 
 	"github.com/globalsign/mgo"
 	"github.com/timescale/tsbs/cmd/tsbs_generate_data/serialize"
@@ -27,12 +28,7 @@ func (b *naiveBenchmark) GetPointIndexer(_ uint) load.PointIndexer {
 	return &load.ConstantIndexer{}
 }
 
-type singlePoint struct {
-	Measurement string                 `bson:"measurement"`
-	Timestamp   int64                  `bson:"timestamp_ns"`
-	Fields      map[string]interface{} `bson:"fields"`
-	Tags        map[string]string      `bson:"tags"`
-}
+type singlePoint map[string]interface{}
 
 var spPool = &sync.Pool{New: func() interface{} { return &singlePoint{} }}
 
@@ -65,19 +61,18 @@ func (p *naiveProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64
 	for i, event := range batch {
 		x := spPool.Get().(*singlePoint)
 
-		x.Measurement = string(event.MeasurementName())
-		x.Timestamp = event.Timestamp()
-		x.Fields = map[string]interface{}{}
-		x.Tags = map[string]string{}
+		(*x)["measurement"] = string(event.MeasurementName())
+		(*x)[timestampField] = time.Unix(0, event.Timestamp())
+		(*x)["tags"] = map[string]string{}
 		f := &serialize.MongoReading{}
 		for j := 0; j < event.FieldsLength(); j++ {
 			event.Fields(f, j)
-			x.Fields[string(f.Key())] = f.Value()
+			(*x)[string(f.Key())] = f.Value()
 		}
 		t := &serialize.MongoTag{}
 		for j := 0; j < event.TagsLength(); j++ {
 			event.Tags(t, j)
-			x.Tags[string(t.Key())] = string(t.Value())
+			(*x)["tags"].(map[string]string)[string(t.Key())] = string(t.Value())
 		}
 		p.pvs[i] = x
 		metricCnt += uint64(event.FieldsLength())

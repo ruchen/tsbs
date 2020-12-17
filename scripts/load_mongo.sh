@@ -21,8 +21,8 @@ DOC_PER=${DOC_PER:-false}
 
 cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --db-name=${DATABASE_NAME} \
-                                --url=${MONGO_URL} \
                                 --batch-size=${BATCH_SIZE} \
                                 --workers=${NUM_WORKERS} \
                                 --document-per-event=${DOC_PER} \
+                                --timeseries-collection=${TIMESERIES_COLLECTION} \
                                 --reporting-period=${PROGRESS_INTERVAL}

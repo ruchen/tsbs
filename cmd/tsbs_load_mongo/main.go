@@ -19,14 +19,15 @@ const (
 	aggDateFmt         = "20060102_15" // see Go docs for how we arrive at this time format
 	aggKeyID           = "key_id"
 	aggInsertBatchSize = 500 // found via trial-and-error
-	timestampField     = "timestamp_ns"
+	timestampField     = "time"
 )
 
 // Program option vars:
 var (
-	daemonURL    string
-	documentPer  bool
-	writeTimeout time.Duration
+	daemonURL            string
+	documentPer          bool
+	writeTimeout         time.Duration
+	timeseriesCollection bool
 )
 
 // Global vars
@@ -42,6 +43,7 @@ func init() {
 	pflag.String("url", "localhost:27017", "Mongo URL.")
 	pflag.Duration("write-timeout", 10*time.Second, "Write timeout.")
 	pflag.Bool("document-per-event", false, "Whether to use one document per event or aggregate by hour")
+	pflag.Bool("timeseries-collection", true, "Whether to use a time-series collection")
 
 	pflag.Parse()
 
@@ -58,6 +60,7 @@ func init() {
 	daemonURL = viper.GetString("url")
 	writeTimeout = viper.GetDuration("write-timeout")
 	documentPer = viper.GetBool("document-per-event")
+	timeseriesCollection = viper.GetBool("timeseries-collection")
 
 	loader = load.GetBenchmarkRunner(config)
 }
