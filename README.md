@@ -101,10 +101,14 @@ TSBS is a collection of Go programs (with some auxiliary bash and Python
 scripts). The easiest way to get and install the Go programs is to use
 `go get` and then `go install`:
 ```bash
-# Fetch TSBS and its dependencies
+# Fetch the modified TSBS and its dependencies
 $ go get github.com/timescale/tsbs
-$ cd $GOPATH/src/github.com/timescale/tsbs/cmd
+$ cd $GOPATH/src/github.com/gregorynoma/tsbs/cmd
 $ go get ./...
+
+# Rename the directory to match the imports in the code
+$ cd $GOPATH/src/github.com
+$ mv gregorynoma timescale
 
 # Install desired binaries. At a minimum this includes tsbs_generate_data,
 # tsbs_generate_queries, one tsbs_load_* binary, and one tsbs_run_queries_*
