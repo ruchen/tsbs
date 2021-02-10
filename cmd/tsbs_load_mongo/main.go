@@ -28,6 +28,8 @@ var (
 	documentPer          bool
 	writeTimeout         time.Duration
 	timeseriesCollection bool
+	retryableWrites      bool
+	orderedInserts       bool
 )
 
 // Global vars
@@ -40,10 +42,12 @@ func init() {
 	var config load.BenchmarkRunnerConfig
 	config.AddToFlagSet(pflag.CommandLine)
 
-	pflag.String("url", "localhost:27017", "Mongo URL.")
+	pflag.String("url", "mongodb://localhost:27017", "Mongo URL.")
 	pflag.Duration("write-timeout", 10*time.Second, "Write timeout.")
 	pflag.Bool("document-per-event", false, "Whether to use one document per event or aggregate by hour")
 	pflag.Bool("timeseries-collection", true, "Whether to use a time-series collection")
+	pflag.Bool("retryable-writes", true, "Whether to use retryable writes")
+	pflag.Bool("ordered-inserts", true, "Whether to use ordered inserts")
 
 	pflag.Parse()
 
@@ -61,6 +65,8 @@ func init() {
 	writeTimeout = viper.GetDuration("write-timeout")
 	documentPer = viper.GetBool("document-per-event")
 	timeseriesCollection = viper.GetBool("timeseries-collection")
+	retryableWrites = viper.GetBool("retryable-writes")
+	orderedInserts = viper.GetBool("ordered-inserts")
 
 	loader = load.GetBenchmarkRunner(config)
 }

@@ -1,29 +1,31 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type dbCreator struct {
-	session *mgo.Session
+	client *mongo.Client
 }
 
 func (d *dbCreator) Init() {
 	var err error
-	d.session, err = mgo.DialWithTimeout(daemonURL, writeTimeout)
+	opts := options.Client().ApplyURI(daemonURL).SetSocketTimeout(writeTimeout).SetRetryWrites(retryableWrites)
+	d.client, err = mongo.Connect(context.Background(), opts)
 	if err != nil {
 		log.Fatal(err)
 	}
-	d.session.SetMode(mgo.Eventual, false)
 }
 
 func (d *dbCreator) DBExists(dbName string) bool {
-	dbs, err := d.session.DatabaseNames()
+	dbs, err := d.client.ListDatabaseNames(context.Background(), bson.D{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,12 +38,12 @@ func (d *dbCreator) DBExists(dbName string) bool {
 }
 
 func (d *dbCreator) RemoveOldDB(dbName string) error {
-	collections, err := d.session.DB(dbName).CollectionNames()
+	collections, err := d.client.Database(dbName).ListCollectionNames(context.Background(), bson.D{})
 	if err != nil {
 		return err
 	}
 	for _, name := range collections {
-		d.session.DB(dbName).C(name).DropCollection()
+		d.client.Database(dbName).Collection(name).Drop(context.Background())
 	}
 
 	return nil
@@ -49,35 +51,26 @@ func (d *dbCreator) RemoveOldDB(dbName string) error {
 
 func (d *dbCreator) CreateDB(dbName string) error {
 	cmd := make(bson.D, 0, 4)
-	cmd = append(cmd, bson.DocElem{"create", collectionName})
-
-	// wiredtiger settings
-	cmd = append(cmd, bson.DocElem{
-		"storageEngine", map[string]interface{}{
-			"wiredTiger": map[string]interface{}{
-				"configString": "block_compressor=snappy",
-			},
-		},
-	})
+	cmd = append(cmd, bson.E{"create", collectionName})
 
 	if timeseriesCollection {
-		cmd = append(cmd, bson.DocElem{"timeseries", map[string]interface{}{
+		cmd = append(cmd, bson.E{"timeseries", bson.M{
 			"timeField": timestampField,
 			"metaField": "tags",
 		}})
 	}
 
-	err := d.session.DB(dbName).Run(cmd, nil)
-	if err != nil {
-		if strings.Contains(err.Error(), "already exists") {
+	res := d.client.Database(dbName).RunCommand(context.Background(), cmd)
+	if res.Err() != nil {
+		if strings.Contains(res.Err().Error(), "already exists") {
 			return nil
 		}
-		return fmt.Errorf("create collection err: %v", err)
+		return fmt.Errorf("create collection err: %v", res.Err().Error())
 	}
 
 	return nil
 }
 
 func (d *dbCreator) Close() {
-	d.session.Close()
+	d.client.Disconnect(context.Background())
 }

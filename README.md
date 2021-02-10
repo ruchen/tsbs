@@ -88,7 +88,7 @@ query execution performance. (It currently does not measure
 concurrent insert and query performance, which is a future priority.)
 To accomplish this in a fair way, the data to be inserted and the
 queries to run are pre-generated and native Go clients are used
-wherever possible to connect to each database (e.g., `mgo` for MongoDB).
+wherever possible to connect to each database.
 
 Although the data is randomly generated, TSBS data and queries are
 entirely deterministic. By supplying the same PRNG (pseudo-random number
@@ -102,7 +102,7 @@ scripts). The easiest way to get and install the Go programs is to use
 `go get` and then `go install`:
 ```bash
 # Fetch the modified TSBS and its dependencies
-$ go get github.com/timescale/tsbs
+$ go get github.com/gregorynoma/tsbs
 $ cd $GOPATH/src/github.com/gregorynoma/tsbs/cmd
 $ go get ./...
 

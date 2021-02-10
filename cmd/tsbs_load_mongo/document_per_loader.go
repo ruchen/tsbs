@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/globalsign/mgo"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
 	"github.com/timescale/tsbs/cmd/tsbs_generate_data/serialize"
 	"github.com/timescale/tsbs/load"
 )
@@ -34,16 +37,14 @@ var spPool = &sync.Pool{New: func() interface{} { return &singlePoint{} }}
 
 type naiveProcessor struct {
 	dbc        *dbCreator
-	collection *mgo.Collection
+	collection *mongo.Collection
 
 	pvs []interface{}
 }
 
 func (p *naiveProcessor) Init(workerNUm int, doLoad bool) {
 	if doLoad {
-		sess := p.dbc.session.Copy()
-		db := sess.DB(loader.DatabaseName())
-		p.collection = db.C(collectionName)
+		p.collection = p.dbc.client.Database(loader.DatabaseName()).Collection(collectionName)
 	}
 	p.pvs = []interface{}{}
 }
@@ -79,9 +80,8 @@ func (p *naiveProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64
 	}
 
 	if doLoad {
-		bulk := p.collection.Bulk()
-		bulk.Insert(p.pvs...)
-		_, err := bulk.Run()
+		opts := options.InsertMany().SetOrdered(orderedInserts)
+		_, err := p.collection.InsertMany(context.Background(), p.pvs, opts)
 		if err != nil {
 			log.Fatalf("Bulk insert docs err: %s\n", err.Error())
 		}

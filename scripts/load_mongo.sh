@@ -25,4 +25,6 @@ cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --workers=${NUM_WORKERS} \
                                 --document-per-event=${DOC_PER} \
                                 --timeseries-collection=${TIMESERIES_COLLECTION} \
+                                --retryable-writes=${RETRYABLE_WRITES} \
+                                --ordered-inserts=${ORDERED_INSERTS} \
                                 --reporting-period=${PROGRESS_INTERVAL}

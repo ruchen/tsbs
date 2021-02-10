@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+
 	"github.com/timescale/tsbs/cmd/tsbs_generate_data/serialize"
 	"github.com/timescale/tsbs/load"
 )
@@ -76,7 +78,7 @@ var pPool = &sync.Pool{New: func() interface{} { return &point{} }}
 
 type aggProcessor struct {
 	dbc        *dbCreator
-	collection *mgo.Collection
+	collection *mongo.Collection
 
 	createdDocs map[string]bool
 	createQueue []interface{}
@@ -84,9 +86,7 @@ type aggProcessor struct {
 
 func (p *aggProcessor) Init(workerNum int, doLoad bool) {
 	if doLoad {
-		sess := p.dbc.session.Copy()
-		db := sess.DB(loader.DatabaseName())
-		p.collection = db.C(collectionName)
+		p.collection = p.dbc.client.Database(loader.DatabaseName()).Collection(collectionName)
 	}
 	p.createdDocs = make(map[string]bool)
 	p.createQueue = []interface{}{}
@@ -172,12 +172,13 @@ func (p *aggProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64) 
 
 	if doLoad {
 		// Checks if any new documents need to be made and does so
-		bulk := p.collection.Bulk()
-		bulk = insertNewAggregateDocs(p.collection, bulk, p.createQueue)
+		insertNewAggregateDocs(p.collection, p.createQueue)
+		models := make([]mongo.WriteModel, len(docToEvents))
 		p.createQueue = p.createQueue[:0]
 
 		// For each document, create one 'set' command for all records
 		// that belong to the document
+		i := 0
 		for docKey, events := range docToEvents {
 			selector := bson.M{aggDocID: docKey}
 			updateMap := bson.M{}
@@ -191,12 +192,11 @@ func (p *aggProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64) 
 				updateMap[key] = val
 			}
 
-			update := bson.M{"$set": updateMap}
-			bulk.Update(selector, update)
+			models[i] = mongo.NewUpdateOneModel().SetFilter(selector).SetUpdate(updateMap)
 		}
 
 		// All documents accounted for, finally run the operation
-		_, err := bulk.Run()
+		_, err := p.collection.BulkWrite(context.Background(), models)
 		if err != nil {
 			log.Fatalf("Bulk aggregate update err: %s\n", err.Error())
 		}
@@ -213,8 +213,7 @@ func (p *aggProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64) 
 
 // insertNewAggregateDocs handles creating new aggregated documents when new devices
 // or time periods are encountered
-func insertNewAggregateDocs(collection *mgo.Collection, bulk *mgo.Bulk, createQueue []interface{}) *mgo.Bulk {
-	b := bulk
+func insertNewAggregateDocs(collection *mongo.Collection, createQueue []interface{}) {
 	if len(createQueue) > 0 {
 		off := 0
 		for off < len(createQueue) {
@@ -223,16 +222,12 @@ func insertNewAggregateDocs(collection *mgo.Collection, bulk *mgo.Bulk, createQu
 				l = len(createQueue)
 			}
 
-			b.Insert(createQueue[off:l]...)
-			_, err := b.Run()
+			_, err := collection.InsertMany(context.Background(), createQueue[off:l])
 			if err != nil {
 				log.Fatalf("Bulk aggregate docs err: %s\n", err.Error())
 			}
-			b = collection.Bulk()
 
 			off = l
 		}
 	}
-
-	return b
 }

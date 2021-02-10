@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
+	"go.mongodb.org/mongo-driver/bson"
+
 	"github.com/timescale/tsbs/cmd/tsbs_generate_queries/uses/devops"
 	"github.com/timescale/tsbs/internal/utils"
 	"github.com/timescale/tsbs/query"
@@ -298,7 +299,7 @@ func (d *Devops) GroupByTimeAndPrimaryTag(qi query.Query, numMetrics int) {
 	pipelineQuery = append(pipelineQuery, group)
 
 	// Add sort operators
-	sort := bson.M{"$sort": bson.D{{ "_id.time",1}, {"_id.hostname", 1}}}
+	sort := bson.M{"$sort": bson.D{{"_id.time", 1}, {"_id.hostname", 1}}}
 	pipelineQuery = append(pipelineQuery, sort)
 
 	humanLabel := devops.GetDoubleGroupByLabel("Mongo", numMetrics)
