@@ -192,7 +192,7 @@ func (p *aggProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64) 
 				updateMap[key] = val
 			}
 
-			models[i] = mongo.NewUpdateOneModel().SetFilter(selector).SetUpdate(updateMap)
+			models[i] = mongo.NewUpdateOneModel().SetFilter(selector).SetUpdate(bson.M{"$set": updateMap})
 		}
 
 		// All documents accounted for, finally run the operation

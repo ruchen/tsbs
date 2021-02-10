@@ -18,6 +18,9 @@ EXE_DIR=${EXE_DIR:-$(dirname $0)}
 source ${EXE_DIR}/load_common.sh
 
 DOC_PER=${DOC_PER:-false}
+TIMESERIES_COLLECTION=${TIMESERIES_COLLECTION:-false}
+RETRYABLE_WRITES=${RETRYABLE_WRITES:-true}
+ORDERED_INSERTS=${ORDERED_INSERTS:-true}
 
 cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --db-name=${DATABASE_NAME} \

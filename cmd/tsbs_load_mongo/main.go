@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -45,7 +46,7 @@ func init() {
 	pflag.String("url", "mongodb://localhost:27017", "Mongo URL.")
 	pflag.Duration("write-timeout", 10*time.Second, "Write timeout.")
 	pflag.Bool("document-per-event", false, "Whether to use one document per event or aggregate by hour")
-	pflag.Bool("timeseries-collection", true, "Whether to use a time-series collection")
+	pflag.Bool("timeseries-collection", false, "Whether to use a time-series collection")
 	pflag.Bool("retryable-writes", true, "Whether to use retryable writes")
 	pflag.Bool("ordered-inserts", true, "Whether to use ordered inserts")
 
@@ -67,6 +68,10 @@ func init() {
 	timeseriesCollection = viper.GetBool("timeseries-collection")
 	retryableWrites = viper.GetBool("retryable-writes")
 	orderedInserts = viper.GetBool("ordered-inserts")
+
+	if !documentPer && timeseriesCollection {
+		log.Fatal("Must set document-per-event=true in order to use timeseries-collection=true")
+	}
 
 	loader = load.GetBenchmarkRunner(config)
 }
