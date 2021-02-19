@@ -10,6 +10,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/timescale/tsbs/cmd/tsbs_generate_data/serialize"
 	"github.com/timescale/tsbs/load"
@@ -193,10 +194,12 @@ func (p *aggProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64) 
 			}
 
 			models[i] = mongo.NewUpdateOneModel().SetFilter(selector).SetUpdate(bson.M{"$set": updateMap})
+			i++
 		}
 
 		// All documents accounted for, finally run the operation
-		_, err := p.collection.BulkWrite(context.Background(), models)
+		opts := options.BulkWrite().SetOrdered(orderedInserts)
+		_, err := p.collection.BulkWrite(context.Background(), models, opts)
 		if err != nil {
 			log.Fatalf("Bulk aggregate update err: %s\n", err.Error())
 		}
