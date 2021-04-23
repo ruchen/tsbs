@@ -31,6 +31,7 @@ var (
 	timeseriesCollection bool
 	retryableWrites      bool
 	orderedInserts       bool
+	randomFieldOrder     bool
 )
 
 // Global vars
@@ -49,6 +50,7 @@ func init() {
 	pflag.Bool("timeseries-collection", false, "Whether to use a time-series collection")
 	pflag.Bool("retryable-writes", true, "Whether to use retryable writes")
 	pflag.Bool("ordered-inserts", true, "Whether to use ordered inserts")
+	pflag.Bool("random-field-order", true, "Whether to use random field order")
 
 	pflag.Parse()
 
@@ -68,6 +70,7 @@ func init() {
 	timeseriesCollection = viper.GetBool("timeseries-collection")
 	retryableWrites = viper.GetBool("retryable-writes")
 	orderedInserts = viper.GetBool("ordered-inserts")
+	randomFieldOrder = viper.GetBool("random-field-order")
 
 	if !documentPer && timeseriesCollection {
 		log.Fatal("Must set document-per-event=true in order to use timeseries-collection=true")

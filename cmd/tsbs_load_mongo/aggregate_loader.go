@@ -125,11 +125,13 @@ func (p *aggProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64) 
 
 	eventCnt := uint64(0)
 	for _, event := range batch.arr {
+		tagsSlice := bson.D{}
 		tagsMap := map[string]string{}
 		t := &serialize.MongoTag{}
 		for j := 0; j < event.TagsLength(); j++ {
 			event.Tags(t, j)
 			tagsMap[string(t.Key())] = string(t.Value())
+			tagsSlice = append(tagsSlice, bson.E{string(t.Key()), string(t.Value())})
 		}
 
 		// Determine which document this event belongs too
@@ -142,13 +144,24 @@ func (p *aggProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64) 
 		_, ok := p.createdDocs[docKey]
 		if !ok {
 			if _, ok := p.createdDocs[docKey]; !ok {
-				p.createQueue = append(p.createQueue, bson.M{
-					aggDocID:      docKey,
-					aggKeyID:      dateKey,
-					"measurement": string(event.MeasurementName()),
-					"tags":        tagsMap,
-					"events":      emptyDoc,
-				})
+				if randomFieldOrder {
+					p.createQueue = append(p.createQueue, bson.M{
+						aggDocID:      docKey,
+						aggKeyID:      dateKey,
+						"measurement": string(event.MeasurementName()),
+						"tags":        tagsMap,
+						"events":      emptyDoc,
+					})
+				} else {
+					p.createQueue = append(p.createQueue, bson.D{
+						{aggDocID,      docKey},
+						{aggKeyID,      dateKey},
+						{"measurement", string(event.MeasurementName())},
+						{"tags",        tagsSlice},
+						{"events",      emptyDoc},
+					})
+				}
+				
 			}
 			p.createdDocs[docKey] = true
 		}
