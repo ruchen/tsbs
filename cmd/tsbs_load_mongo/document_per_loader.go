@@ -8,6 +8,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/bson"
+
 
 	"github.com/timescale/tsbs/cmd/tsbs_generate_data/serialize"
 	"github.com/timescale/tsbs/load"
@@ -59,24 +61,46 @@ func (p *naiveProcessor) ProcessBatch(b load.Batch, doLoad bool) (uint64, uint64
 	}
 	p.pvs = p.pvs[:len(batch)]
 	var metricCnt uint64
-	for i, event := range batch {
-		x := spPool.Get().(*singlePoint)
 
-		(*x)["measurement"] = string(event.MeasurementName())
-		(*x)[timestampField] = time.Unix(0, event.Timestamp())
-		(*x)["tags"] = map[string]string{}
-		f := &serialize.MongoReading{}
-		for j := 0; j < event.FieldsLength(); j++ {
-			event.Fields(f, j)
-			(*x)[string(f.Key())] = f.Value()
+	if randomFieldOrder {
+		for i, event := range batch {
+			x := spPool.Get().(*singlePoint)
+			(*x)["measurement"] = string(event.MeasurementName())
+			(*x)[timestampField] = time.Unix(0, event.Timestamp())
+			(*x)["tags"] = map[string]string{}
+			f := &serialize.MongoReading{}
+			for j := 0; j < event.FieldsLength(); j++ {
+				event.Fields(f, j)
+				(*x)[string(f.Key())] = f.Value()
+			}
+			t := &serialize.MongoTag{}
+			for j := 0; j < event.TagsLength(); j++ {
+				event.Tags(t, j)
+				(*x)["tags"].(map[string]string)[string(t.Key())] = string(t.Value())
+			}
+			p.pvs[i] = x
+			metricCnt += uint64(event.FieldsLength())
 		}
-		t := &serialize.MongoTag{}
-		for j := 0; j < event.TagsLength(); j++ {
-			event.Tags(t, j)
-			(*x)["tags"].(map[string]string)[string(t.Key())] = string(t.Value())
+	} else {
+		for i, event := range batch {
+			x := bson.D{}
+			x = append(x, bson.E{"measurement", string(event.MeasurementName())})
+			x = append(x, bson.E{timestampField, time.Unix(0, event.Timestamp())})
+			f := &serialize.MongoReading{}
+			for j := 0; j < event.FieldsLength(); j++ {
+				event.Fields(f, j)
+				x = append(x, bson.E{string(f.Key()), f.Value()})
+			}
+			t := &serialize.MongoTag{}
+			tags := bson.D{}
+			for j := 0; j < event.TagsLength(); j++ {
+				event.Tags(t, j)
+				tags = append(tags, bson.E{string(t.Key()), string(t.Value())})
+			}
+			x = append(x, bson.E{"tags", tags})
+			p.pvs[i] = x
+			metricCnt += uint64(event.FieldsLength())
 		}
-		p.pvs[i] = x
-		metricCnt += uint64(event.FieldsLength())
 	}
 
 	if doLoad {
