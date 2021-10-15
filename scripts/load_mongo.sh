@@ -14,6 +14,9 @@ MONGO_URL=${MONGO_URL:-"mongodb://username:password@localhost:27017/admin"}
 # Load parameters - personal
 PROGRESS_INTERVAL=${PROGRESS_INTERVAL:-10s}
 
+#default to timeseries_collection_sharded to false
+TIMESERIES_COLLECTION_SHARDED=${TIMESERIES_COLLECTION_SHARDED:-false}
+			       
 EXE_DIR=${EXE_DIR:-$(dirname $0)}
 source ${EXE_DIR}/load_common.sh
 
@@ -32,4 +35,6 @@ cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --retryable-writes=${RETRYABLE_WRITES} \
                                 --ordered-inserts=${ORDERED_INSERTS} \
                                 --random-field-order=${RANDOM_FIELD_ORDER} \
-                                --reporting-period=${PROGRESS_INTERVAL}
+                                --reporting-period=${PROGRESS_INTERVAL} \
+			        --timeseries-collection-sharded=${TIMESERIES_COLLECTION_SHARDED} \
+
