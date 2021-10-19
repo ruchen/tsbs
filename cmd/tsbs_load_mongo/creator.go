@@ -82,7 +82,7 @@ func (d *dbCreator) CreateDB(dbName string) error {
 		// then shard the collection on timeField
 		cmd2 := make(bson.D, 0, 4)
 		cmd2 = append(cmd2, bson.E{"shardCollection",dbName+"."+collectionName})
-                cmd2 = append(cmd2, bson.E{"key", bson.M{timestampField: 1}})
+              cmd2 = append(cmd2, bson.E{"key", bson.M{timestampField: 1}})
 
 	   	res2 := d.client.Database("admin").RunCommand(context.Background(), cmd2)
 	
