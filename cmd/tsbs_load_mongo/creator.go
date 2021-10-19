@@ -91,7 +91,7 @@ func (d *dbCreator) CreateDB(dbName string) error {
 	        }
 	}
 
-        var model []mongo.IndexModel
+      var model []mongo.IndexModel
 	if documentPer {
 		model = []mongo.IndexModel{
 			{
