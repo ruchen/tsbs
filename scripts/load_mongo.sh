@@ -36,5 +36,5 @@ cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --ordered-inserts=${ORDERED_INSERTS} \
                                 --random-field-order=${RANDOM_FIELD_ORDER} \
                                 --reporting-period=${PROGRESS_INTERVAL} \
-			        --timeseries-collection-sharded=${TIMESERIES_COLLECTION_SHARDED} \
+			          --timeseries-collection-sharded=${TIMESERIES_COLLECTION_SHARDED} \
 
