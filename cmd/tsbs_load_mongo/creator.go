@@ -61,7 +61,6 @@ func (d *dbCreator) CreateDB(dbName string) error {
 	}
 
 	res := d.client.Database(dbName).RunCommand(context.Background(), cmd)
-
 	if res.Err() != nil {
 		if strings.Contains(res.Err().Error(), "already exists") {
 			return nil
