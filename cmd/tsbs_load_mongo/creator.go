@@ -68,6 +68,28 @@ func (d *dbCreator) CreateDB(dbName string) error {
 		return fmt.Errorf("create collection err: %v", res.Err().Error())
 	}
 
+	if timeseriesCollection && timeseriesCollectionSharded {
+		// first enable sharding on dbName
+		cmd1 := make(bson.D, 0, 4)
+		cmd1 = append(cmd1, bson.E{"enableSharding", dbName})
+
+		res1 := d.client.Database("admin").RunCommand(context.Background(), cmd1)
+		if res1.Err() != nil {
+			return fmt.Errorf("enableSharding err: %v", res1.Err().Error())
+		}
+
+		// then shard the collection on timeField
+		cmd2 := make(bson.D, 0, 4)
+		cmd2 = append(cmd2, bson.E{"shardCollection", dbName + "." + collectionName})
+		cmd2 = append(cmd2, bson.E{"key", bson.M{timestampField: 1}})
+
+		res2 := d.client.Database("admin").RunCommand(context.Background(), cmd2)
+
+		if res2.Err() != nil {
+			return fmt.Errorf("shard collection err: %v", res2.Err().Error())
+		}
+	}
+
 	var model []mongo.IndexModel
 	if documentPer {
 		model = []mongo.IndexModel{

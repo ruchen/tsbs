@@ -32,6 +32,7 @@ var (
 	retryableWrites      bool
 	orderedInserts       bool
 	randomFieldOrder     bool
+	timeseriesCollectionSharded bool
 )
 
 // Global vars
@@ -51,6 +52,7 @@ func init() {
 	pflag.Bool("retryable-writes", true, "Whether to use retryable writes")
 	pflag.Bool("ordered-inserts", true, "Whether to use ordered inserts")
 	pflag.Bool("random-field-order", true, "Whether to use random field order")
+	pflag.Bool("timeseries-collection-sharded", false, "Whether to shard a time-series collection")
 
 	pflag.Parse()
 
@@ -71,9 +73,13 @@ func init() {
 	retryableWrites = viper.GetBool("retryable-writes")
 	orderedInserts = viper.GetBool("ordered-inserts")
 	randomFieldOrder = viper.GetBool("random-field-order")
+	timeseriesCollectionSharded = viper.GetBool("timeseries-collection-sharded")
 
 	if !documentPer && timeseriesCollection {
 		log.Fatal("Must set document-per-event=true in order to use timeseries-collection=true")
+	}
+	if !timeseriesCollection && timeseriesCollectionSharded {
+		log.Fatal("Must set timeseries-collection=true in order to use timeseries-collection-sharded=true")
 	}
 
 	loader = load.GetBenchmarkRunner(config)
