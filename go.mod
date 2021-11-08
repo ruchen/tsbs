@@ -1,4 +1,5 @@
-module github.com/ruchen/tsbs
+module github.com/timescale/tsbs
+replace github.com/timescale/tsbs=>github.com/ruchen/tsbs
 
 go 1.12
 
