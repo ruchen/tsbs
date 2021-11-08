@@ -1,5 +1,5 @@
 module github.com/timescale/tsbs
-replace github.com/timescale/tsbs=>github.com/ruchen/tsbs
+replace github.com/timescale/tsbs => github.com/ruchen/tsbs PERF-2393
 
 go 1.12
 
