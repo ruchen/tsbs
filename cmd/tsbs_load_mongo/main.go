@@ -33,6 +33,9 @@ var (
 	orderedInserts       bool
 	randomFieldOrder     bool
 	timeseriesCollectionSharded bool
+	numInitChunks        uint
+	shardKeySpec         string
+	loadBalancerOn       bool
 )
 
 // Global vars
@@ -53,7 +56,10 @@ func init() {
 	pflag.Bool("ordered-inserts", true, "Whether to use ordered inserts")
 	pflag.Bool("random-field-order", true, "Whether to use random field order")
 	pflag.Bool("timeseries-collection-sharded", false, "Whether to shard a time-series collection")
-
+	pflag.Uint("number-initial-chunks", 0, "number of initial chunks to create and distribute of an empty collection; if 0 then do not specifiy it")
+	pflag.String("shard-key-spec", "{time:1}", "shard key spec")
+	pflag.String("load-balancer-on", "true", "whether to keep load balancer on")
+	
 	pflag.Parse()
 
 	err := utils.SetupConfigFile()
@@ -74,6 +80,9 @@ func init() {
 	orderedInserts = viper.GetBool("ordered-inserts")
 	randomFieldOrder = viper.GetBool("random-field-order")
 	timeseriesCollectionSharded = viper.GetBool("timeseries-collection-sharded")
+	numInitChunks = viper.GetUint("number-initial-chunks")
+	shardKeySpec = viper.GetString("shard-key-spec")
+	loadBalancerOn = viper.GetBool("load-balancer-on")
 
 	if !documentPer && timeseriesCollection {
 		log.Fatal("Must set document-per-event=true in order to use timeseries-collection=true")
