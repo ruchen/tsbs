@@ -61,6 +61,7 @@ func (d *dbCreator) CreateDB(dbName string) error {
 	}
 
 	res := d.client.Database(dbName).RunCommand(context.Background(), cmd)
+
 	if res.Err() != nil {
 		if strings.Contains(res.Err().Error(), "already exists") {
 			return nil
@@ -69,28 +70,52 @@ func (d *dbCreator) CreateDB(dbName string) error {
 	}
 
 	if timeseriesCollection && timeseriesCollectionSharded {
-		// first enable sharding on dbName
+	        // first enable sharding on dbName
 		cmd1 := make(bson.D, 0, 4)
 		cmd1 = append(cmd1, bson.E{"enableSharding", dbName})
-
-		res1 := d.client.Database("admin").RunCommand(context.Background(), cmd1)
-		if res1.Err() != nil {
+		
+	        res1 := d.client.Database("admin").RunCommand(context.Background(), cmd1)
+	        if res1.Err() != nil {
 			return fmt.Errorf("enableSharding err: %v", res1.Err().Error())
 		}
 
-		// then shard the collection on timeField
+		// then shard the collection
 		cmd2 := make(bson.D, 0, 4)
-		cmd2 = append(cmd2, bson.E{"shardCollection", dbName + "." + collectionName})
-		cmd2 = append(cmd2, bson.E{"key", bson.M{timestampField: 1}})
+		cmd2 = append(cmd2, bson.E{"shardCollection",dbName+"."+collectionName})
+		var shardKey interface{}
+		
+		fmt.Println(shardKeySpec)
+		
+		err := bson.UnmarshalExtJSON([]byte(shardKeySpec), true, &shardKey)
+		if err != nil {
+		   err = bson.UnmarshalExtJSON([]byte("{\"time\":1}"), true, &shardKey)		       
+		}
+		fmt.Println(shardKey)
+		
+		cmd2 = append(cmd2, bson.E{"key", shardKey})
 
-		res2 := d.client.Database("admin").RunCommand(context.Background(), cmd2)
-
+		if numInitChunks > 0 {
+		   	cmd2 = append(cmd2, bson.E{"numInitialChunks", numInitChunks})
+		}
+	   	res2 := d.client.Database("admin").RunCommand(context.Background(), cmd2)
+	
 		if res2.Err() != nil {
-			return fmt.Errorf("shard collection err: %v", res2.Err().Error())
+		        return fmt.Errorf("shard collection err: %v", res2.Err().Error())
+	        }
+
+		cmd3 := make(bson.D, 0, 4)
+		if loadBalancerOn {
+		        cmd3 = append(cmd3, bson.E{"balancerStart", 1})		
+		} else {
+		        cmd3 = append(cmd3, bson.E{"balancerStop", 1})		
+		}
+	        res3 := d.client.Database("admin").RunCommand(context.Background(), cmd3)
+	        if res3.Err() != nil {
+			return fmt.Errorf("balancerStart/Stop err: %v", res3.Err().Error())
 		}
 	}
 
-	var model []mongo.IndexModel
+ 	var model []mongo.IndexModel
 	if documentPer {
 		model = []mongo.IndexModel{
 			{

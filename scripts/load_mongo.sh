@@ -14,6 +14,12 @@ MONGO_URL=${MONGO_URL:-"mongodb://username:password@localhost:27017/admin"}
 # Load parameters - personal
 PROGRESS_INTERVAL=${PROGRESS_INTERVAL:-10s}
 
+#default to timeseries_collection_sharded to false
+TIMESERIES_COLLECTION_SHARDED=${TIMESERIES_COLLECTION_SHARDED:-false}
+NUMBER_INITIAL_CHUNKS=${NUMBER_INITIAL_CHUNKS:-0}
+SHARD_KEY_SPEC=${SHARD_KEY_SPEC:-"\"time\":1"}
+LOAD_BALANCER_ON=${LOAD_BALANCER_ON:-true}
+
 EXE_DIR=${EXE_DIR:-$(dirname $0)}
 source ${EXE_DIR}/load_common.sh
 
@@ -22,8 +28,6 @@ TIMESERIES_COLLECTION=${TIMESERIES_COLLECTION:-false}
 RETRYABLE_WRITES=${RETRYABLE_WRITES:-true}
 ORDERED_INSERTS=${ORDERED_INSERTS:-true}
 RANDOM_FIELD_ORDER=${RANDOM_FIELD_ORDER:-false}
-#default to timeseries_collection_sharded to false
-TIMESERIES_COLLECTION_SHARDED=${TIMESERIES_COLLECTION_SHARDED:-false}
 
 cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --db-name=${DATABASE_NAME} \
@@ -35,5 +39,7 @@ cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --ordered-inserts=${ORDERED_INSERTS} \
                                 --random-field-order=${RANDOM_FIELD_ORDER} \
                                 --reporting-period=${PROGRESS_INTERVAL} \
-                                --timeseries-collection-sharded=${TIMESERIES_COLLECTION_SHARDED} \
-
+			        --timeseries-collection-sharded=${TIMESERIES_COLLECTION_SHARDED} \
+				--number-initial-chunks=${NUMBER_INITIAL_CHUNKS} \
+				--shard-key-spec=${SHARD_KEY_SPEC} \
+				--load-balancer-on=${LOAD_BALANCER_ON}
