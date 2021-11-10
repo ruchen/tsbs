@@ -15,7 +15,7 @@ MONGO_URL=${MONGO_URL:-"mongodb://username:password@localhost:27017/admin"}
 PROGRESS_INTERVAL=${PROGRESS_INTERVAL:-10s}
 
 #default to timeseries_collection_sharded to false
-TIMESERIES_COLLECTION_SHARDED=${TIMESERIES_COLLECTION_SHARDED:-false}
+COLLECTION_SHARDED=${COLLECTION_SHARDED:-false}
 NUMBER_INITIAL_CHUNKS=${NUMBER_INITIAL_CHUNKS:-0}
 SHARD_KEY_SPEC=${SHARD_KEY_SPEC:-"\"time\":1"}
 LOAD_BALANCER_ON=${LOAD_BALANCER_ON:-true}
@@ -30,6 +30,7 @@ ORDERED_INSERTS=${ORDERED_INSERTS:-true}
 RANDOM_FIELD_ORDER=${RANDOM_FIELD_ORDER:-false}
 
 cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
+                                --url=${MONGO_URL} \
                                 --db-name=${DATABASE_NAME} \
                                 --batch-size=${BATCH_SIZE} \
                                 --workers=${NUM_WORKERS} \
@@ -39,7 +40,7 @@ cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --ordered-inserts=${ORDERED_INSERTS} \
                                 --random-field-order=${RANDOM_FIELD_ORDER} \
                                 --reporting-period=${PROGRESS_INTERVAL} \
-			        --timeseries-collection-sharded=${TIMESERIES_COLLECTION_SHARDED} \
-				--number-initial-chunks=${NUMBER_INITIAL_CHUNKS} \
-				--shard-key-spec=${SHARD_KEY_SPEC} \
-				--load-balancer-on=${LOAD_BALANCER_ON}
+                                --collection-sharded=${COLLECTION_SHARDED} \
+                                --number-initial-chunks=${NUMBER_INITIAL_CHUNKS} \
+                                --shard-key-spec=${SHARD_KEY_SPEC} \
+                                --load-balancer-on=${LOAD_BALANCER_ON}

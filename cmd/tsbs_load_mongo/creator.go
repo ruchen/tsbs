@@ -69,7 +69,7 @@ func (d *dbCreator) CreateDB(dbName string) error {
 		return fmt.Errorf("create collection err: %v", res.Err().Error())
 	}
 
-	if timeseriesCollection && timeseriesCollectionSharded {
+	if collectionSharded {
 	        // first enable sharding on dbName
 		cmd1 := make(bson.D, 0, 4)
 		cmd1 = append(cmd1, bson.E{"enableSharding", dbName})
@@ -84,14 +84,10 @@ func (d *dbCreator) CreateDB(dbName string) error {
 		cmd2 = append(cmd2, bson.E{"shardCollection",dbName+"."+collectionName})
 		var shardKey interface{}
 		
-		fmt.Println(shardKeySpec)
-		
 		err := bson.UnmarshalExtJSON([]byte(shardKeySpec), true, &shardKey)
 		if err != nil {
 		   err = bson.UnmarshalExtJSON([]byte("{\"time\":1}"), true, &shardKey)		       
 		}
-		fmt.Println(shardKey)
-		
 		cmd2 = append(cmd2, bson.E{"key", shardKey})
 
 		if numInitChunks > 0 {
