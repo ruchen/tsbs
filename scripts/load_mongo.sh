@@ -9,7 +9,7 @@ fi
 
 # Load parameters - common
 DATA_FILE_NAME=${DATA_FILE_NAME:-mongo-data.gz}
-MONGO_URL=${MONGO_URL:-"mongodb://username:password@localhost:27017/admin"}
+MONGO_URL=${MONGO_URL:-"mongodb://localhost:27017/admin"}
 
 # Load parameters - personal
 PROGRESS_INTERVAL=${PROGRESS_INTERVAL:-10s}
