@@ -17,8 +17,8 @@ PROGRESS_INTERVAL=${PROGRESS_INTERVAL:-10s}
 #default to timeseries_collection_sharded to false
 COLLECTION_SHARDED=${COLLECTION_SHARDED:-false}
 NUMBER_INITIAL_CHUNKS=${NUMBER_INITIAL_CHUNKS:-0}
-SHARD_KEY_SPEC=${SHARD_KEY_SPEC:-"\"time\":1"}
-LOAD_BALANCER_ON=${LOAD_BALANCER_ON:-true}
+SHARD_KEY_SPEC=${SHARD_KEY_SPEC:-"{\"tags.hostname\":"hashed"}"}
+BALANCER_ON=${BALANCER_ON:-true}
 
 EXE_DIR=${EXE_DIR:-$(dirname $0)}
 source ${EXE_DIR}/load_common.sh
@@ -43,4 +43,4 @@ cat ${DATA_FILE} | gunzip | $EXE_FILE_NAME \
                                 --collection-sharded=${COLLECTION_SHARDED} \
                                 --number-initial-chunks=${NUMBER_INITIAL_CHUNKS} \
                                 --shard-key-spec=${SHARD_KEY_SPEC} \
-                                --load-balancer-on=${LOAD_BALANCER_ON}
+                                --balancer-on=${BALANCER_ON}

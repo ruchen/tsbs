@@ -50,64 +50,65 @@ func (d *dbCreator) RemoveOldDB(dbName string) error {
 }
 
 func (d *dbCreator) CreateDB(dbName string) error {
-	cmd := make(bson.D, 0, 4)
-	cmd = append(cmd, bson.E{"create", collectionName})
+	createTSCmd := make(bson.D, 0, 4)
+	createTSCmd = append(createTSCmd, bson.E{"create", collectionName})
 
 	if timeseriesCollection {
-		cmd = append(cmd, bson.E{"timeseries", bson.M{
+		createTSCmd = append(createTSCmd, bson.E{"timeseries", bson.M{
 			"timeField": timestampField,
 			"metaField": "tags",
 		}})
 	}
 
-	res := d.client.Database(dbName).RunCommand(context.Background(), cmd)
+	createTSRes := d.client.Database(dbName).RunCommand(context.Background(), createTSCmd)
 
-	if res.Err() != nil {
-		if strings.Contains(res.Err().Error(), "already exists") {
+	if createTSRes.Err() != nil {
+		if strings.Contains(createTSRes.Err().Error(), "already exists") {
 			return nil
 		}
-		return fmt.Errorf("create collection err: %v", res.Err().Error())
+		return fmt.Errorf("create collection err: %v", createTSRes.Err().Error())
 	}
 
 	if collectionSharded {
 	        // first enable sharding on dbName
-		cmd1 := make(bson.D, 0, 4)
-		cmd1 = append(cmd1, bson.E{"enableSharding", dbName})
+		enableShardingCmd := make(bson.D, 0, 4)
+		enableShardingCmd = append(enableShardingCmd, bson.E{"enableSharding", dbName})
 		
-	        res1 := d.client.Database("admin").RunCommand(context.Background(), cmd1)
-	        if res1.Err() != nil {
-			return fmt.Errorf("enableSharding err: %v", res1.Err().Error())
+	        renableShardingRes :=
+			d.client.Database("admin").RunCommand(context.Background(), enableShardingCmd)
+	        if renableShardingRes.Err() != nil {
+			return fmt.Errorf("enableSharding err: %v", renableShardingRes.Err().Error())
 		}
 
 		// then shard the collection
-		cmd2 := make(bson.D, 0, 4)
-		cmd2 = append(cmd2, bson.E{"shardCollection",dbName+"."+collectionName})
+		shardCollCmd := make(bson.D, 0, 4)
+		shardCollCmd = append(shardCollCmd, bson.E{"shardCollection",dbName+"."+collectionName})
 		var shardKey interface{}
 		
 		err := bson.UnmarshalExtJSON([]byte(shardKeySpec), true, &shardKey)
 		if err != nil {
 		   err = bson.UnmarshalExtJSON([]byte("{\"time\":1}"), true, &shardKey)		       
 		}
-		cmd2 = append(cmd2, bson.E{"key", shardKey})
+		shardCollCmd = append(shardCollCmd, bson.E{"key", shardKey})
 
 		if numInitChunks > 0 {
-		   	cmd2 = append(cmd2, bson.E{"numInitialChunks", numInitChunks})
+		   	shardCollCmd = append(shardCollCmd, bson.E{"numInitialChunks", numInitChunks})
 		}
-	   	res2 := d.client.Database("admin").RunCommand(context.Background(), cmd2)
+	   	shardCollRes := d.client.Database("admin").RunCommand(context.Background(), shardCollCmd)
 	
-		if res2.Err() != nil {
-		        return fmt.Errorf("shard collection err: %v", res2.Err().Error())
+		if shardCollRes.Err() != nil {
+		        return fmt.Errorf("shard collection err: %v", shardCollRes.Err().Error())
 	        }
 
-		cmd3 := make(bson.D, 0, 4)
-		if loadBalancerOn {
-		        cmd3 = append(cmd3, bson.E{"balancerStart", 1})		
+		balancerCmd := make(bson.D, 0, 4)
+		if balancerOn {
+		        balancerCmd = append(balancerCmd, bson.E{"balancerStart", 1})		
 		} else {
-		        cmd3 = append(cmd3, bson.E{"balancerStop", 1})		
+		        balancerCmd = append(balancerCmd, bson.E{"balancerStop", 1})		
 		}
-	        res3 := d.client.Database("admin").RunCommand(context.Background(), cmd3)
-	        if res3.Err() != nil {
-			return fmt.Errorf("balancerStart/Stop err: %v", res3.Err().Error())
+	        balancerRes := d.client.Database("admin").RunCommand(context.Background(), balancerCmd)
+	        if balancerRes.Err() != nil {
+			return fmt.Errorf("balancerStart/Stop err: %v", balancerRes.Err().Error())
 		}
 	}
 
