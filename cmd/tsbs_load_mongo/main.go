@@ -32,7 +32,10 @@ var (
 	retryableWrites      bool
 	orderedInserts       bool
 	randomFieldOrder     bool
-	timeseriesCollectionSharded bool
+	collectionSharded    bool
+	numInitChunks        uint
+	shardKeySpec         string
+	balancerOn       bool
 )
 
 // Global vars
@@ -52,8 +55,13 @@ func init() {
 	pflag.Bool("retryable-writes", true, "Whether to use retryable writes")
 	pflag.Bool("ordered-inserts", true, "Whether to use ordered inserts")
 	pflag.Bool("random-field-order", true, "Whether to use random field order")
-	pflag.Bool("timeseries-collection-sharded", false, "Whether to shard a time-series collection")
-
+	pflag.Bool("collection-sharded", false, "Whether to shard the collection")
+	pflag.Uint("number-initial-chunks", 0,
+	           "number of initial chunks to create and distribute for an empty collection;" +
+                   "if 0 then do not specifiy any initial chunks and let the system default to 2 per shard")
+	pflag.String("shard-key-spec", "{time:1}", "shard key spec")
+	pflag.String("balancer-on", "true", "whether to keep shard re-balancer on")
+	
 	pflag.Parse()
 
 	err := utils.SetupConfigFile()
@@ -73,15 +81,14 @@ func init() {
 	retryableWrites = viper.GetBool("retryable-writes")
 	orderedInserts = viper.GetBool("ordered-inserts")
 	randomFieldOrder = viper.GetBool("random-field-order")
-	timeseriesCollectionSharded = viper.GetBool("timeseries-collection-sharded")
+	collectionSharded = viper.GetBool("collection-sharded")
+	numInitChunks = viper.GetUint("number-initial-chunks")
+	shardKeySpec = viper.GetString("shard-key-spec")
+	balancerOn = viper.GetBool("balancer-on")
 
 	if !documentPer && timeseriesCollection {
 		log.Fatal("Must set document-per-event=true in order to use timeseries-collection=true")
 	}
-	if !timeseriesCollection && timeseriesCollectionSharded {
-		log.Fatal("Must set timeseries-collection=true in order to use timeseries-collection-sharded=true")
-	}
-
 	loader = load.GetBenchmarkRunner(config)
 }
 
