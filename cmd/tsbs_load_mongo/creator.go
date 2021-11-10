@@ -50,23 +50,23 @@ func (d *dbCreator) RemoveOldDB(dbName string) error {
 }
 
 func (d *dbCreator) CreateDB(dbName string) error {
-	createTSCmd := make(bson.D, 0, 4)
-	createTSCmd = append(createTSCmd, bson.E{"create", collectionName})
+	createCollCmd := make(bson.D, 0, 4)
+	createCollCmd = append(createCollCmd, bson.E{"create", collectionName})
 
 	if timeseriesCollection {
-		createTSCmd = append(createTSCmd, bson.E{"timeseries", bson.M{
+		createCollCmd = append(createCollCmd, bson.E{"timeseries", bson.M{
 			"timeField": timestampField,
 			"metaField": "tags",
 		}})
 	}
 
-	createTSRes := d.client.Database(dbName).RunCommand(context.Background(), createTSCmd)
+	createCollRes := d.client.Database(dbName).RunCommand(context.Background(), createCollCmd)
 
-	if createTSRes.Err() != nil {
-		if strings.Contains(createTSRes.Err().Error(), "already exists") {
+	if createCollRes.Err() != nil {
+		if strings.Contains(createCollRes.Err().Error(), "already exists") {
 			return nil
 		}
-		return fmt.Errorf("create collection err: %v", createTSRes.Err().Error())
+		return fmt.Errorf("create collection err: %v", createCollRes.Err().Error())
 	}
 
 	if collectionSharded {

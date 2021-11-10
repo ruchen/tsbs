@@ -56,7 +56,9 @@ func init() {
 	pflag.Bool("ordered-inserts", true, "Whether to use ordered inserts")
 	pflag.Bool("random-field-order", true, "Whether to use random field order")
 	pflag.Bool("collection-sharded", false, "Whether to shard the collection")
-	pflag.Uint("number-initial-chunks", 0, "number of initial chunks to create and distribute of an empty collection; if 0 then do not specifiy it")
+	pflag.Uint("number-initial-chunks", 0,
+	           "number of initial chunks to create and distribute for an empty collection;" +
+                   "if 0 then do not specifiy any initial chunks and let the system default to 2 per shard")
 	pflag.String("shard-key-spec", "{time:1}", "shard key spec")
 	pflag.String("balancer-on", "true", "whether to keep shard re-balancer on")
 	
